@@ -5,7 +5,6 @@ const client = new Client({});
 
 async function findTherapists() {
   try {
-    
     const response = await client.textSearch({
       params: {
         query: "therapist",
@@ -16,16 +15,11 @@ async function findTherapists() {
       },
     });
 
-    console.log("✅ Raw Google Places results:", response.data.results);
-
-    const simplified = response.data.results.map((p) => ({
-      name: p.name,
-      rating: p.rating || "N/A",
-      address: p.formatted_address,
-    }));
-
-    console.log("📋 Simplified therapist list:", simplified);
-    return simplified;
+    return response.data.results.map((p) => ({
+        name: p.name,
+        rating: p.rating || "N/A",
+        address: p.formatted_address,
+      }));
     } catch (err) {
       console.error(err.response?.data || err.message);
       return [];
