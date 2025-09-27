@@ -9,7 +9,13 @@ async function synthesizeSpeech(text) {
     outputFormat: 'mp3_44100_128',
   });
 
-  return audio;
+  // Collect the stream chunks into a proper MP3 buffer
+  const chunks = [];
+  for await (const chunk of audio) {
+    chunks.push(chunk);
+  }
+
+  return Buffer.concat(chunks);
 }
 
 module.exports = { synthesizeSpeech };

@@ -152,6 +152,28 @@ app.get("/api/test-chat", async (req, res, next) => {
     }
 });
 
+// TEST ENDPOINT: TTS service
+app.post("/api/test-tts", async (req, res, next) => {
+    try {
+        const { text } = req.body;
+
+        if (!text) {
+            return res.status(400).json({ error: "Text is required" });
+        }
+
+        const audioBuffer = await tts.synthesizeSpeech(text);
+
+        res.set({
+            'Content-Type': 'audio/mpeg',
+            'Content-Length': audioBuffer.length
+        });
+        res.send(audioBuffer);
+
+    } catch (err) {
+        next(err);
+    }
+});
+
 app.use((err, _req, res, _next) => {
     console.error(err);
     res.status(500).json({ error: "internal_error", message: err.message });
