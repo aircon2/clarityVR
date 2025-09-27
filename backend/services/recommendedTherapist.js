@@ -15,45 +15,28 @@ export async function recommendTherapists(therapistList, patientKeywords) {
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that outputs valid JSON only. Do not include any text outside JSON."
+          content: "You are a helpful assistant. Output therapist recommendations as a **human-readable string**, not JSON."
         },
         {
-            role: "user",
-            content: `
-          Patient keywords/needs: ${JSON.stringify(patientKeywords, null, 2)}
-          
-          Therapists data (each has therapistName, clinicName, rating, address, reviews, and types): 
-          ${JSON.stringify(therapistList, null, 2)}
-          
-          Instructions:
-          - Always include both therapistName and clinicName fields.
-          - If therapistName and clinicName are the same, OMIT clinicName entirely from the output.
-          - If clinicName contains therapistName (e.g. "Dr. Jane Doe, Clinical Psychologist"), remove the therapistName part and keep only the clinic/organization portion.
-          - Use reviews to extract specialties or strengths.
-          - Use types to help match patient needs.
-          - Prioritize higher ratings and closer locations.
-          - Return the **top 5 therapists** that best match the patient.
-          - Output JSON array only with keys: therapistName, clinicName (optional), rating, address, matchedWords.
-          
-          Example:
-          [
-            {
-              "therapistName": "Dr. Jane Doe",
-              "clinicName": "Healthy Minds NYC",
-              "rating": 4.9,
-              "address": "123 Main St",
-              "matchedWords": "stress, trauma, anxiety"
-            },
-            {
-              "therapistName": "Noah Clyman",
-              "rating": 5,
-              "address": "225 W 35th St, New York, NY",
-              "matchedWords": "stress, anxiety, personal challenges"
-            }
-          ]
+          role: "user",
+          content: `
+            Patient keywords/needs: ${JSON.stringify(patientKeywords)}
+            Therapists data: ${JSON.stringify(therapistList)}
+
+            Instructions:
+            - Output like a human speaking.
+            - Introduce each therapist with their name, clinic (if different), rating, and address.
+            - Mention matched patient keywords.
+            - Return the top 5 therapists in a single short paragraph.
+            - shouldnt be longer than 50 words
+            - explain the rating and the city its located in. 
+            
+            FORMAT EXAMPLE (NOT ACTUAL DATA DONT USE):
+            "For someone feeling overwhelmed with work anxiety, sleep issues, and stress, consider these top therapists: Taryn Bush at Greenpoint Psychotherapy  who has a 4.8 rating located in Brooklyn, NY...)"
+
           `
-          }
-        ],
+        }
+      ],
        
       temperature: 0.3,
     });
@@ -62,12 +45,11 @@ export async function recommendTherapists(therapistList, patientKeywords) {
 
   
     const raw = completion.choices[0].message.content
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .trim();
+      .replace(/```/g, "")
+      .trim();
 
+    return raw;
 
-    return JSON.parse(raw);
   } catch (err) {
     console.error("Failed to parse patient keywords:", err, raw);
     return { keywords: [], therapyType: "general" };
@@ -75,7 +57,7 @@ export async function recommendTherapists(therapistList, patientKeywords) {
 }
 
 
-Message Angela Cheng - she/her
+
 
 
 

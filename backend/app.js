@@ -6,6 +6,9 @@ const stt = require("./services/stt");
 const chat = require("./services/chat");
 const context = require("./services/context");
 const tts = require("./services/tts");
+const findTherapist = require("./services/findTherapist");
+const keywords = require("./services/keywords");
+const recommendedTherapist = require("./services/recommendedTherapist");
 
 const app = express();
 app.use(express.json());
@@ -101,6 +104,57 @@ app.get("/api/get-context", (req, res) => {
         res.status(500).json({ error: "Failed to get context", message: err.message });
     }
 });
+
+app.get("/api/get-therapists", async (req, res) => {
+    try {
+        const therapists = await findTherapist.findTherapists();
+        res.json({ therapists });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to fetch therapists" });
+    }
+});
+
+
+app.post("/api/extract-keywords", async (req, res) => {
+    try {
+      const { transcript } = req.body;
+      if (!transcript || !Array.isArray(transcript)) {
+        return res.status(400).json({ error: "transcript is required and must be an array" });
+      }
+      const keywordsData = await keywords.extractPatientKeywords(transcript);
+      res.json({
+        success: true,
+        data: keywordsData
+      });
+    } catch (err) {
+      console.error("Error extracting patient keywords:", err);
+      res.status(500).json({ error: "Failed to extract keywords", message: err.message });
+    }
+  });
+
+  app.post("/api/recommend-therapists", async (req, res) => {
+    try {
+      const { therapistList, patientKeywords } = req.body;
+  
+      if (!therapistList || !patientKeywords) {
+        return res.status(400).json({
+          error: "therapistList and patientKeywords are required",
+        });
+      }
+  
+      // Call the service function
+      const recommendations = await recommendedTherapist.recommendTherapists(therapistList, patientKeywords);
+  
+      // Return the human-readable string
+      res.send(recommendations);
+  
+    } catch (err) {
+      console.error("Error recommending therapists:", err);
+      res.status(500).json({ error: "Failed to recommend therapists", message: err.message });
+    }
+  });
+  
 
 // UPDATE context endpoint (add message)
 app.post("/api/post-context", (req, res) => {
