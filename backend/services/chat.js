@@ -23,7 +23,6 @@ async function chatGPT() {
         Extract text from the following JSON transcripts of the conversation history and communicate with caring thoughtful responses to your client. 
         Try not to repeat previous responses and only respond to the most recent text prompt.
         
-        Client Text content:
         ${JSON.stringify(messages)}
         
         IMPORTANT: Let text responses be concise.
