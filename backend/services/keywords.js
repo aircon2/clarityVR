@@ -28,7 +28,11 @@ Extract the patient's main concerns, therapy needs, and key descriptive words. R
     temperature: 0
   });
 
-  const raw = completion.choices[0].message.content;
+  const raw = completion.choices[0].message.content
+  .replace(/```json/g, "")
+  .replace(/```/g, "")
+  .trim();
+
   try {
     return JSON.parse(raw);
   } catch (err) {

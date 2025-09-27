@@ -3,7 +3,7 @@ import 'dotenv/config';
 
 const client = new Client({});
 
-function extractTherapistNameFromReviews(reviews) {
+export function extractTherapistNameFromReviews(reviews) {
   // Regex to match "Firstname Lastname" followed by 'at'
   const nameRegex = /\b([A-Z][a-z]+ [A-Z][a-z]+)\b(?=\s+at)/;
 
@@ -15,7 +15,7 @@ function extractTherapistNameFromReviews(reviews) {
   return null; // fallback if no name found
 }
 
-export async function findTherapists(lat = 40.7128, lng = -74.0060, radius = 5000) {
+export async function findTherapists(lat = 40.7128, lng = -74.0060, radius = 5000, limit = 10) {
   try {
     const searchResponse = await client.textSearch({
       params: {
@@ -26,9 +26,10 @@ export async function findTherapists(lat = 40.7128, lng = -74.0060, radius = 500
         key: process.env.GOOGLE_API_KEY,
       },
     });
+    const results = searchResponse.data.results.slice(0, limit);
 
     const therapists = await Promise.all(
-      searchResponse.data.results.map(async (clinic) => {
+      results.map(async (clinic) => {
         try {
           const detailsResponse = await client.placeDetails({
             params: {
@@ -76,5 +77,5 @@ export async function findTherapists(lat = 40.7128, lng = -74.0060, radius = 500
   }
 }
 
-// Test call
-findTherapists();
+// // Test call
+// findTherapists();
