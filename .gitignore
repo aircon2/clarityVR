@@ -112,3 +112,7 @@ package-lock.json
 
 DS_Store
 .DS_Store
+
+
+//Large files to ignore
+unity-client/ClarityVR/Assets/Proxy Games/Stylized Nature Kit Lite/Misc/HDRI.hdr
