@@ -52,13 +52,13 @@ app.post("/api/stt", upload.single("audio"), async (req, res, next) => {
         context.addMessage("PATIENT", result.text);
 
         // get therapist stuff
-        const therapistResponse = await chat.chatGPT(result.text);
+        const therapistResponse = await chat.chatGPT();
 
         // Update Context
         context.addMessage("THERAPIST", therapistResponse.content);
 
         // Audio response step
-        const audio = tts.synthesizeSpeech(therapistResponse.content);
+        const audio = await tts.synthesizeSpeech(therapistResponse.content);
 
         res.set({
             'Content-Type': 'audio/mpeg',
