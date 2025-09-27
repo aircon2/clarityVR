@@ -16,6 +16,10 @@ unity-client/ClarityVR/Library/
 unity-client/ClarityVR/Temp
 unity-client/ClarityVR/UserSettings
 
+unity-client/Room/Library/
+unity-client/Room/Temp
+unity-client/Room/UserSettings
+
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be commited to version control.
 *.blend1
 *.blend1.meta
