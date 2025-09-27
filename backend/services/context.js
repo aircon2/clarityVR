@@ -11,7 +11,12 @@ function addMessage(role, content) {
   transcript.push({ role, content });
 }
 
+function clearTranscript() {
+  transcript = [];
+}
+
 module.exports = {
   getTranscript,
-  addMessage
+  addMessage,
+  clearTranscript
 };
