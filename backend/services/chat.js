@@ -3,7 +3,7 @@ const { getTranscript } = require("./context");
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-async function chatGPT(userMessage) {
+async function chatGPT() {
 
 
   const messages = [
@@ -24,7 +24,7 @@ async function chatGPT(userMessage) {
         Try not to repeat previous responses and only respond to the most recent text prompt.
         
         Client Text content:
-        ${messages}
+        ${JSON.stringify(messages)}
         
         IMPORTANT: Let text responses be concise.
         IMPORTANT: Responses should offer care and emotional validation, additionally you can provide ways to help. 
@@ -32,7 +32,7 @@ async function chatGPT(userMessage) {
         Extract text from transcript to read the history and return the response as a JSON array with this exact structure:
         [
           {
-            "role": "assistant",
+            "role": "THERAPIST",
             "content": "therapistResponse"
           }
         ]
@@ -46,11 +46,8 @@ async function chatGPT(userMessage) {
 
   const therapistResponse = response.choices[0].message.content.trim();
 
-
-  return {
-    role: "THERAPIST",
-    content: therapistResponse
-  };
+  const parsedResponse = JSON.parse(therapistResponse);
+  return parsedResponse[0]
 }
 
 module.exports = { chatGPT };

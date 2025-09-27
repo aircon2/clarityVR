@@ -119,22 +119,6 @@ app.post("/api/post-context", (req, res) => {
     }
 });
 
-app.post("/api/post-context", (req, res) => {
-    try {
-        const { role, content } = req.body;
-
-        context.addMessage(role, content);
-
-        res.json({
-            success: true,
-            message: "Message added to context",
-            transcript: context.getTranscript()
-        });
-    } catch (err) {
-        res.status(500).json({ error: "Failed to update context", message: err.message });
-    }
-});
-
 // CLEAR context endpoint
 app.delete("/api/clear-context", (req, res) => {
     try {
@@ -147,6 +131,24 @@ app.delete("/api/clear-context", (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ error: "Failed to clear context", message: err.message });
+    }
+});
+
+// TEST ENDPOINT: Chat service
+app.get("/api/test-chat", async (req, res, next) => {
+    try {
+
+        const therapistResponse = await chat.chatGPT();
+
+        res.json({
+            success: true,
+            contextLength: context.getTranscript().length,
+            currentContext: context.getTranscript(),
+            content: therapistResponse
+        });
+
+    } catch (err) {
+        next(err);
     }
 });
 
