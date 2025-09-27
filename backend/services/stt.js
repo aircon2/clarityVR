@@ -1,10 +1,13 @@
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import "dotenv/config";
+const { ElevenLabsClient } = require("elevenlabs");
+const fs = require("fs");
+require("dotenv").config();
+
 const elevenlabs = new ElevenLabsClient();
 
 async function transcribe(localWavPath) {
-    const response = await fetch(localWavPath);
-    const audioBlob = new Blob([await response.arrayBuffer()], { type: "audio/wav" });
+    const audioBuffer = fs.readFileSync(localWavPath);
+    const audioBlob = new Blob([audioBuffer], { type: "audio/wav" });
+
     const transcription = await elevenlabs.speechToText.convert({
         file: audioBlob,
         modelId: "scribe_v1",
@@ -13,13 +16,7 @@ async function transcribe(localWavPath) {
         diarize: false,
     });
 
-    return transcription;
+    return { text: transcription.text };
 }
 
 module.exports = { transcribe };
-
-
-
-
-
-

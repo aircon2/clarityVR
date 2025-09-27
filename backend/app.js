@@ -3,6 +3,8 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const stt = require("./services/stt");
+const chat = require("./services/chat");
+const context = require("./services/context");
 
 const app = express();
 
@@ -21,11 +23,15 @@ app.post("/api/stt", upload.single("audio"), async (req, res, next) => {
             return res.status(400).json({ error: "No audio file uploaded" });
         }
 
-        // Call your STT service (you’ll implement logic later)
-        // It should return { text: "...", ... }
+        // Transcribe step
         const result = await stt.transcribe(req.file.path);
 
-        res.json(result);
+        // Update Context
+        context.addMessage("PATIENT", result.text);
+
+        // 
+
+
     } catch (err) {
         next(err);
     }
