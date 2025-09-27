@@ -6,13 +6,13 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 async function chatGPT(userMessage) {
 
 
-    const messages = [
-        ...getTranscript()
-    ];
+  const messages = [
+    ...getTranscript()
+  ];
 
-    const response = await openai.chat.completions.create({
-        model: "gpt-5",
-        input: `
+  const response = await openai.chat.completions.create({
+    model: "gpt-5",
+    input: `
 You are a professional Therapist. Extract text from the following JSON transcripts of the conversation history and communicate with caring thoughtful responses to your client. 
 Try not to repeat previous response and only respond to the most recent text prompt.
 
@@ -35,16 +35,16 @@ Extract text from transcript to read the history and return the response as a JS
 If no transcript is found, return an empty array: []
 
 `,
-        temperature: 0.7
-    });
+    temperature: 0.7
+  });
 
-    const therapistResponse = response.choices[0].message.content.trim();
+  const therapistResponse = response.choices[0].message.content.trim();
 
 
-    return {
-        role: "assistant",
-        content: therapistResponse
-    };
+  return {
+    role: "assistant",
+    content: therapistResponse
+  };
 }
 
 module.exports = { chatGPT };
