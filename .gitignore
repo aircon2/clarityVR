@@ -105,6 +105,10 @@ InitTestScene*.unity*
 # Backend ENV
 backend/.env
 
+.env
+
+backend/tmp/
+
 # Backend node_modules
 node_modules
 
