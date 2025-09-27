@@ -8,6 +8,7 @@ const context = require("./services/context");
 const tts = require("./services/tts");
 
 const app = express();
+app.use(express.json());
 
 // Custom storage configuration for .wav files
 const storage = multer.diskStorage({
@@ -88,6 +89,66 @@ app.post("/api/test-stt", upload.single("audio"), async (req, res, next) => {
     }
 });
 
+// GET context endpoint
+app.get("/api/get-context", (req, res) => {
+    try {
+        const transcript = context.getTranscript();
+        res.json({
+            transcript: transcript,
+            messageCount: transcript.length
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to get context", message: err.message });
+    }
+});
+
+// UPDATE context endpoint (add message)
+app.post("/api/post-context", (req, res) => {
+    try {
+        const { role, content } = req.body;
+
+        context.addMessage(role, content);
+
+        res.json({
+            success: true,
+            message: "Message added to context",
+            transcript: context.getTranscript()
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to update context", message: err.message });
+    }
+});
+
+app.post("/api/post-context", (req, res) => {
+    try {
+        const { role, content } = req.body;
+
+        context.addMessage(role, content);
+
+        res.json({
+            success: true,
+            message: "Message added to context",
+            transcript: context.getTranscript()
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to update context", message: err.message });
+    }
+});
+
+// CLEAR context endpoint
+app.delete("/api/clear-context", (req, res) => {
+    try {
+        context.clearTranscript();
+
+        res.json({
+            success: true,
+            message: "Context cleared successfully",
+            transcript: context.getTranscript() // Should return empty array
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to clear context", message: err.message });
+    }
+});
 
 app.use((err, _req, res, _next) => {
     console.error(err);

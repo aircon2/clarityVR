@@ -5,8 +5,8 @@ function getTranscript() {
 }
 
 function addMessage(role, content) {
-  if (!["user", "assistant"].includes(role)) {
-    throw new Error("Role must be 'user' or 'assistant'");
+  if (!["PATIENT", "THERAPIST"].includes(role)) {
+    throw new Error("Role must be 'PATIENT' or 'THERAPIST'");
   }
   transcript.push({ role, content });
 }
