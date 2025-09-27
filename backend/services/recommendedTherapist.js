@@ -7,15 +7,27 @@ const openai = new OpenAI({
 
 export async function recommendTherapists(therapistList) {
   try {
-    console.log("📨 Sending therapist list to OpenAI:", therapistList);
+    
+
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5",
-      input: `Here is a list of therapists with their ratings and addresses:\n\n${JSON.stringify(
-            therapistList,
-            null,
-            2
-          )}\n\nPlease pick the best 5 recommendations, prioritizing higher ratings and closer locations. Return them in a clean JSON array with fields: name, rating, address.`,
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful assistant that outputs valid JSON only. Do not include any text outside JSON."
+        },
+        {
+          role: "user",
+          content: `Here is a list of therapists:\n${JSON.stringify(therapistList, null, 2)}
+Pick the best 5 based on rating and location. Return them as a JSON array with keys: name, rating, address only. like this: [{
+    "name": "Therapist Name",
+    "rating": 4.9,
+    "address": "123 Main St"
+  },
+  ...]`
+        }
+      ],
        
       temperature: 0.3,
     });
