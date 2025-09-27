@@ -26,7 +26,7 @@ IMPORTANT: Responses should offer care and emotional validation, additionally yo
 Extract text from transcript to read the history and return the response as a JSON array with this exact structure
 [
   {
-    role: "assistant",
+    role: "Therapist",
     content: therapistResponse
 
   }
@@ -42,7 +42,7 @@ If no transcript is found, return an empty array: []
 
 
   return {
-    role: "assistant",
+    role: "Therapist",
     content: therapistResponse
   };
 }
