@@ -5,12 +5,33 @@ const path = require("path");
 const stt = require("./services/stt");
 const chat = require("./services/chat");
 const context = require("./services/context");
+const tts = require("./services/tts");
 
 const app = express();
 
+// Custom storage configuration for .wav files
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, path.join(__dirname, "tmp"));
+    },
+    filename: function (req, file, cb) {
+        // Generate unique filename with .wav extension
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'audio-' + uniqueSuffix + '.wav');
+    }
+});
+
 const upload = multer({
-    dest: path.join(__dirname, "tmp"),
-    limits: { fileSize: 10 * 1024 * 1024 }
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: function (req, file, cb) {
+        // Optional: Only accept audio files
+        if (file.mimetype.startsWith('audio/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only audio files are allowed!'), false);
+        }
+    }
 });
 
 app.get("/api/health", (_req, res) => {
@@ -49,12 +70,31 @@ app.post("/api/stt", upload.single("audio"), async (req, res, next) => {
     }
 });
 
+// TEST ENDPOINT: just transcription text
+app.post("/api/test-stt", upload.single("audio"), async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "No audio file uploaded" });
+        }
+
+        // Call your ElevenLabs STT service
+        const result = await stt.transcribe(req.file.path);
+
+        // Return only the transcription text
+        res.json({ text: result.text });
+
+    } catch (err) {
+        next(err);
+    }
+});
+
+
 app.use((err, _req, res, _next) => {
     console.error(err);
     res.status(500).json({ error: "internal_error", message: err.message });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
     console.log(`Backend listening on port ${PORT}`);
 });

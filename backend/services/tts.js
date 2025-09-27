@@ -1,5 +1,5 @@
-import { ElevenLabsClient, play } from '@elevenlabs/elevenlabs-js';
-import 'dotenv/config';
+const { ElevenLabsClient } = require("elevenlabs");
+require("dotenv").config();
 
 async function synthesizeSpeech(text) {
   const elevenlabs = new ElevenLabsClient();
@@ -9,11 +9,7 @@ async function synthesizeSpeech(text) {
     outputFormat: 'mp3_44100_128',
   });
 
-  await play(audio);
   return audio;
 }
-}
 
-
-await play(audio);
-
+module.exports = { synthesizeSpeech };
