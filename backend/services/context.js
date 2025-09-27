@@ -14,6 +14,5 @@ function addMessage(role, content) {
 
 module.exports = {
     getTranscript,
-    addMessage,
-    truncateTranscript
+    addMessage
 };
