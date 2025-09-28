@@ -65,6 +65,15 @@ public class avatarTalk : MonoBehaviour
         Debug.Log("avatarTalk: Playback ended - isTalking set to false");
     }
     
+    /// <summary>
+    /// Public method to stop the avatar from talking (useful for session management)
+    /// </summary>
+    public void StopTalking()
+    {
+        isTalking = false;
+        Debug.Log("avatarTalk: Avatar talking stopped manually");
+    }
+    
     void Update()
     {
         // Optional: You can add any additional logic here

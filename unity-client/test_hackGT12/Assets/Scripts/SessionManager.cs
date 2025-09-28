@@ -1,0 +1,56 @@
+using UnityEngine;
+using TMPro;
+
+public class SessionManager : MonoBehaviour
+{
+    public TextMeshPro sessionText;
+    public avatarTalk therapistAvatar;
+
+    public void EndSession()
+    {
+        string formattedText = 
+@"Recommendations:
+
+1. Name: Taryn Bush
+   Clinic: Greenpoint Psychotherapy
+   Rating: 4.8
+   Address: 117 Dobbin St Suite 204A, Brooklyn, NY 11222
+   Matched Words: stress, anxiety
+
+2. Name: Noah Clyman
+   Clinic: Noah Clyman
+   Rating: 5
+   Address: 225 W 35th St, New York, NY 10001
+   Matched Words: stress";
+
+        // Display the formatted text
+        if (sessionText != null)
+        {
+            sessionText.text = formattedText;
+            Debug.Log("SessionManager: Formatted text displayed");
+        }
+        else
+        {
+            Debug.LogWarning("SessionManager: sessionText is not assigned!");
+        }
+
+        // Stop therapist talking if assigned
+        if (therapistAvatar != null)
+        {
+            therapistAvatar.StopTalking();
+            Debug.Log("SessionManager: Avatar talking stopped");
+        }
+        else
+        {
+            Debug.LogWarning("SessionManager: therapistAvatar is not assigned!");
+        }
+    }
+
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            EndSession();
+        }
+    }
+}
