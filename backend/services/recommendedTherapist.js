@@ -12,10 +12,11 @@ export async function recommendTherapists(therapistList, patientKeywords) {
       messages: [
         {
           role: "system",
-          content: `You are a helpful assistant. 
-          Return recommendations in **two parts**:
-          1. A JSON array of top 5 therapist objects (fields: name, clinicName, rating, address, matchedWords).
-          2. A short human-readable summary string (max 50 words) describing the top therapists.`
+          content: `You are a helpful assistant.
+          Return recommendations **only** as a JSON array of top 5 therapist objects.
+          Each object should have these fields: name, clinicName, rating, address, matchedWords.
+          **Do not include any summary or extra text.**
+          **Important:** if the therapist name and clinic name are the same, disregard the clinicName entirely (leave it empty "").`
         },
         {
           role: "user",
@@ -34,20 +35,19 @@ export async function recommendTherapists(therapistList, patientKeywords) {
                   "address": "string",
                   "matchedWords": "string"
                 }
-              ],
-              "summary": "string"
+              ]
             }
           `
         }
       ],
       temperature: 0.3,
-      response_format: { type: "json_object" }, // Forces valid JSON
+      response_format: { type: "json_object" },
     });
 
     const raw = completion.choices[0].message.content;
     const parsed = JSON.parse(raw);
 
-    return parsed; // { recommendations: [...], summary: "..." }
+    return parsed; // { recommendations: [...] }
 
   } catch (err) {
     console.error("Error generating therapist recommendations:", err);
