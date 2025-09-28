@@ -60,38 +60,55 @@ app.get("/api/health", (_req, res) => {
 // --- changed: accept RAW bytes only; write to .wav; feed to STT -------------
 app.post(
     "/api/stt",
-    express.raw({ type: ["audio/wav", "audio/x-wav", "application/octet-stream"], limit: "10mb" }), // (added)
+    express.raw({ type: ["audio/wav", "audio/x-wav", "application/octet-stream"], limit: "10mb" }),
     async (req, res, next) => {
+        let localWavPath;
         try {
-            // (added) persist raw bytes to a local .wav file
-            const localWavPath = await saveRawBytesToWav(req);
+            console.log("Working");
 
-            // Transcribe step
-            const result = await stt.transcribe(localWavPath);
+            // Persist raw bytes to WAV
+            localWavPath = await saveRawBytesToWav(req);
 
-            // Update Context
-            context.addMessage("PATIENT", result.text);
+            // STT
+            const sttResult = await stt.transcribe(localWavPath);
+            context.addMessage("PATIENT", sttResult.text);
 
-            // get therapist stuff
+            // Therapist reply
             const therapistResponse = await chat.chatGPT();
-
-            // Update Context
             context.addMessage("THERAPIST", therapistResponse.content);
 
-            // Audio response step
+            // TTS (returns Buffer or Uint8Array)
             const audio = await tts.synthesizeSpeech(therapistResponse.content);
 
-            res.set({
-                'Content-Type': 'audio/mpeg',
-                'Content-Length': audio.length
+            // Normalize to Uint8Array → plain number[] for JSON
+            const u8 =
+                audio instanceof Uint8Array
+                    ? audio
+                    : new Uint8Array(
+                        (audio.buffer ?? Buffer.from(audio).buffer),
+                        audio.byteOffset ?? 0,
+                        audio.length
+                    );
+
+            // Always return JSON with the byte array (no audio stream)
+            return res.json({
+                contentType: "audio/mpeg",
+                byteLength: u8.byteLength,
+                audioBytes: Array.from(u8),           // binary array
+                transcriptText: sttResult.text,       // what user said
+                therapistText: therapistResponse.content
             });
-            res.send(audio);
 
         } catch (err) {
             next(err);
+        } finally {
+            if (localWavPath) {
+                fsp.unlink(localWavPath).catch(() => { });
+            }
         }
     }
 );
+
 
 // TEST ENDPOINT: just transcription text (RAW bytes only)
 app.post(

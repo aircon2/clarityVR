@@ -25,9 +25,9 @@ async function chatGPT() {
         
         ${JSON.stringify(messages)}
         
+        IMPORTANT: Return JSON only.
         IMPORTANT: Let text responses be concise.
         IMPORTANT: Responses should offer care and emotional validation, additionally you can provide ways to help. 
-        IMPORTANT: Return JSON only.
         
         Extract text from transcript to read the history and return the response as a JSON array with this exact structure:
         [
