@@ -10,6 +10,7 @@ public class RecordAudioXR : MonoBehaviour
     private int lengthSec = 10;
 
     private AudioUploader uploader;
+    private avatarTalk avatarTalkScript;
 
     void Start()
     {
@@ -26,6 +27,10 @@ public class RecordAudioXR : MonoBehaviour
         uploader = GetComponent<AudioUploader>();
         if (uploader == null)
             Debug.LogError("AudioUploader component missing! Attach it to the same GameObject.");
+
+        avatarTalkScript = GetComponent<avatarTalk>();
+        if (avatarTalkScript == null)
+            Debug.LogWarning("avatarTalk component missing! Attach it to the same GameObject for talking state management.");
 
         Debug.Log("RecordAudioXR started.");
     }
@@ -56,6 +61,12 @@ public class RecordAudioXR : MonoBehaviour
 
         recordedClip = Microphone.Start(device, false, lengthSec, sampleRate);
         Debug.Log("Recording started...");
+        
+        // Notify avatarTalk script that recording has started
+        if (avatarTalkScript != null)
+        {
+            avatarTalkScript.OnRecordingStarted();
+        }
     }
 
     private void StopRecording()

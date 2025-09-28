@@ -15,6 +15,7 @@ public class AudioUploader : MonoBehaviour
 {
     public string uploadUrl = "https://stunning-reforms-illustrated-gathered.trycloudflare.com/api/stt";
     [SerializeField] private AudioSource audioSource;
+    private avatarTalk avatarTalkScript;
 
     private void Awake()
     {
@@ -27,6 +28,10 @@ public class AudioUploader : MonoBehaviour
                 Debug.LogWarning("AudioUploader: No AudioSource assigned or found on GameObject.");
             }
         }
+        
+        avatarTalkScript = GetComponent<avatarTalk>();
+        if (avatarTalkScript == null)
+            Debug.LogWarning("AudioUploader: avatarTalk component missing! Attach it to the same GameObject for talking state management.");
     }
 
     public void UploadClip(AudioClip clip)
@@ -103,6 +108,12 @@ public class AudioUploader : MonoBehaviour
                 audioSource.clip = clip;
                 audioSource.Play();
                 Debug.Log("Audio playback started.");
+                
+                // Notify avatarTalk script that playback has started
+                if (avatarTalkScript != null)
+                {
+                    avatarTalkScript.OnPlaybackStarted();
+                }
             }
         }
         else
