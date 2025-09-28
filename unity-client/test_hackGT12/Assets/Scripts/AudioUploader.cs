@@ -1,37 +1,16 @@
 using System.Collections;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
-using System.IO;
-
-[System.Serializable]
-public class AudioResponse
-{
-    public string contentType;
-    public int byteLength;
-    public byte[] audioBytes;
-}
 
 public class AudioUploader : MonoBehaviour
 {
-    public string uploadUrl = "https://stunning-reforms-illustrated-gathered.trycloudflare.com/api/stt";
-    [SerializeField] private AudioSource audioSource;
-    private avatarTalk avatarTalkScript;
+    public string uploadUrl = "http://YOUR_SERVER_URL/api/stt";
+    public AudioSource audioSource;
 
     private void Awake()
     {
         uploadUrl = uploadUrl.Trim();
-        if (audioSource == null)
-        {
-            audioSource = GetComponent<AudioSource>();
-            if (audioSource == null)
-            {
-                Debug.LogWarning("AudioUploader: No AudioSource assigned or found on GameObject.");
-            }
-        }
-        
-        avatarTalkScript = GetComponent<avatarTalk>();
-        if (avatarTalkScript == null)
-            Debug.LogWarning("AudioUploader: avatarTalk component missing! Attach it to the same GameObject for talking state management.");
     }
 
     public void UploadClip(AudioClip clip)
@@ -62,29 +41,36 @@ public class AudioUploader : MonoBehaviour
         request.uploadHandler = new UploadHandlerRaw(wavData);
         request.downloadHandler = new DownloadHandlerBuffer();
         request.SetRequestHeader("Content-Type", "audio/wav");
-        request.certificateHandler = new BypassCertificate(); // trust trycloudflare certs
 
         yield return request.SendWebRequest();
 
         if (request.result == UnityWebRequest.Result.Success)
         {
             Debug.Log("Upload successful. Parsing response...");
+            string responseText = request.downloadHandler.text;
 
-            // Parse JSON into AudioResponse
-            string json = request.downloadHandler.text;
-            AudioResponse resp = JsonUtility.FromJson<AudioResponse>(json);
+            TTSResponse resp = null;
+            try
+            {
+                resp = JsonUtility.FromJson<TTSResponse>(responseText);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError("Error parsing response: " + ex.Message);
+            }
 
             if (resp != null && resp.audioBytes != null && resp.audioBytes.Length > 0)
             {
-                string filePath = Path.Combine(Application.persistentDataPath, "tts_response.mp3");
+                string fileExt = resp.contentType.Contains("mpeg") ? "mp3" : "wav";
+                string filePath = Path.Combine(Application.persistentDataPath, "tts_response." + fileExt);
                 File.WriteAllBytes(filePath, resp.audioBytes);
-                Debug.Log("Saved audio file to: " + filePath);
+                Debug.Log("Saved response to: " + filePath);
 
-                yield return StartCoroutine(PlayFromFile(filePath));
+                yield return StartCoroutine(PlayFromFile(filePath, fileExt));
             }
             else
             {
-                Debug.LogError("Upload succeeded, but audioBytes were missing or empty.");
+                Debug.LogError("Response did not contain valid audio bytes.");
             }
         }
         else
@@ -93,27 +79,36 @@ public class AudioUploader : MonoBehaviour
         }
     }
 
-    private IEnumerator PlayFromFile(string path)
+    private IEnumerator PlayFromFile(string path, string fileExt)
     {
         string url = "file://" + path;
-        UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(url, AudioType.MPEG);
+
+        // Decide audio type based on extension
+        AudioType type = fileExt == "mp3" ? AudioType.MPEG : AudioType.WAV;
+
+        UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(url, type);
         yield return www.SendWebRequest();
 
         if (www.result == UnityWebRequest.Result.Success)
         {
-            Debug.Log("Audio loaded successfully from file.");
             AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
-            if (audioSource != null)
+            if (clip != null && clip.length > 0f)
             {
-                audioSource.clip = clip;
-                audioSource.Play();
-                Debug.Log("Audio playback started.");
-                
-                // Notify avatarTalk script that playback has started
-                if (avatarTalkScript != null)
+                Debug.Log("Audio loaded successfully. Duration: " + clip.length);
+                if (audioSource != null)
                 {
-                    avatarTalkScript.OnPlaybackStarted();
+                    audioSource.Stop();
+                    audioSource.clip = clip;
+                    audioSource.Play();
                 }
+                else
+                {
+                    Debug.LogWarning("AudioSource not assigned!");
+                }
+            }
+            else
+            {
+                Debug.LogError("Loaded clip is invalid or length is 0.");
             }
         }
         else
@@ -121,12 +116,12 @@ public class AudioUploader : MonoBehaviour
             Debug.LogError("Failed to load audio from file. Error: " + www.error);
         }
     }
-}
 
-public class BypassCertificate : CertificateHandler
-{
-    protected override bool ValidateCertificate(byte[] certificateData)
+    [System.Serializable]
+    public class TTSResponse
     {
-        return true;
+        public string contentType;
+        public int byteLength;
+        public byte[] audioBytes;
     }
 }

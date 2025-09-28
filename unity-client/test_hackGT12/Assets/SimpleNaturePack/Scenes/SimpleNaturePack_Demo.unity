@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.18033694, g: 0.2257798, b: 0.30695397, a: 1}
+  m_IndirectSpecularColor: {r: 0.18024312, g: 0.2256539, b: 0.30680916, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -8273,7 +8273,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2fd48894cc8c4e3fb684972576984c7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  uploadUrl: https://slideshow-names-medical-trust.trycloudflare.com/api/stt
+  uploadUrl: https://issue-better-preservation-heart.trycloudflare.com/api/stt
   audioSource: {fileID: 1255468693}
 --- !u!114 &1255468695
 MonoBehaviour:
@@ -8628,7 +8628,7 @@ Transform:
   m_GameObject: {fileID: 1282121846}
   serializedVersion: 2
   m_LocalRotation: {x: -0.00241823, y: 0.8476548, z: -0.0020610662, w: 0.5305387}
-  m_LocalPosition: {x: -1.41, y: 1.25, z: -2.423}
+  m_LocalPosition: {x: -1.41, y: 1.109, z: -2.423}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
