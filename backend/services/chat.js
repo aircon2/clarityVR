@@ -12,6 +12,7 @@ async function chatGPT() {
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
+    response_format: { type: "json_object" },
     messages: [
       {
         role: "system",
@@ -47,8 +48,34 @@ async function chatGPT() {
 
   const therapistResponse = response.choices[0].message.content.trim();
 
-  const parsedResponse = JSON.parse(therapistResponse);
-  return parsedResponse[0]
+  let parsedResponse;
+  try {
+    parsedResponse = JSON.parse(therapistResponse);
+  } catch (error) {
+    const fixedResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: "You are a an expert in fixing invalid JSON"
+        },
+        {
+          role: "user",
+          content: `
+          Below is an invalid JSON array. Fix the JSON and return the corrected JSON array only.
+          <JSON>
+          ${therapistResponse}
+          </JSON>
+              `
+        }
+      ],
+      temperature: 0.7
+    });
+    parsedResponse = JSON.parse(fixedResponse.choices[0].message.content.trim());
+  }
+  console.log(parsedResponse);
+  return parsedResponse;
 }
 
 module.exports = { chatGPT };
