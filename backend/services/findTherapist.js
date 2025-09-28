@@ -15,7 +15,7 @@ export function extractTherapistNameFromReviews(reviews) {
   return null; // fallback if no name found
 }
 
-export async function findTherapists(lat = 40.7128, lng = -74.0060, radius = 5000, limit = 10) {
+export async function findTherapists(lat = 33.7501, lng = -84.3885, radius = 5000, limit = 10) {
   try {
     const searchResponse = await client.textSearch({
       params: {
