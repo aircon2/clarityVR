@@ -15,7 +15,7 @@ async function chatGPT() {
     messages: [
       {
         role: "system",
-        content: "You are a professional Therapist. Respond with care and validation. Return JSON only."
+        content: "You are a professional Therapist. Respond with care and validation."
       },
       {
         role: "user",
@@ -27,6 +27,7 @@ async function chatGPT() {
         
         IMPORTANT: Let text responses be concise.
         IMPORTANT: Responses should offer care and emotional validation, additionally you can provide ways to help. 
+        IMPORTANT: Return JSON only.
         
         Extract text from transcript to read the history and return the response as a JSON array with this exact structure:
         [
