@@ -7,15 +7,15 @@ const openai = new OpenAI({
 
 export async function recommendTherapists(therapistList, patientKeywords) {
   try {
-    
-
-
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant. Output therapist recommendations as a **human-readable string**, not JSON."
+          content: `You are a helpful assistant. 
+          Return recommendations in **two parts**:
+          1. A JSON array of top 5 therapist objects (fields: name, clinicName, rating, address, matchedWords).
+          2. A short human-readable summary string (max 50 words) describing the top therapists.`
         },
         {
           role: "user",
@@ -23,47 +23,34 @@ export async function recommendTherapists(therapistList, patientKeywords) {
             Patient keywords/needs: ${JSON.stringify(patientKeywords)}
             Therapists data: ${JSON.stringify(therapistList)}
 
-            Instructions:
-            - Output like a human speaking.
-            - Introduce each therapist with their name, clinic (if different), rating, and address.
-            - Mention matched patient keywords.
-            - Return the top 5 therapists in a single short paragraph.
-            - shouldnt be longer than 50 words
-            - explain the rating and the city its located in. 
-            
-            FORMAT EXAMPLE (NOT ACTUAL DATA DONT USE):
-            "For someone feeling overwhelmed with work anxiety, sleep issues, and stress, consider these top therapists: Taryn Bush at Greenpoint Psychotherapy  who has a 4.8 rating located in Brooklyn, NY...)"
+            Output format (important!):
 
+            {
+              "recommendations": [
+                {
+                  "name": "string",
+                  "clinicName": "string",
+                  "rating": number,
+                  "address": "string",
+                  "matchedWords": "string"
+                }
+              ],
+              "summary": "string"
+            }
           `
         }
       ],
-       
       temperature: 0.3,
+      response_format: { type: "json_object" }, // Forces valid JSON
     });
 
-    
+    const raw = completion.choices[0].message.content;
+    const parsed = JSON.parse(raw);
 
-  
-    const raw = completion.choices[0].message.content
-      .replace(/```/g, "")
-      .trim();
-
-    return raw;
+    return parsed; // { recommendations: [...], summary: "..." }
 
   } catch (err) {
-    console.error("Failed to parse patient keywords:", err, raw);
-    return { keywords: [], therapyType: "general" };
+    console.error("Error generating therapist recommendations:", err);
+    throw err;
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
