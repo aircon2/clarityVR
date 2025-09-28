@@ -42,6 +42,44 @@ app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
 });
 
+app.post("/api/full-recommendation", async (req, res) => {
+    try {
+      const { transcript } = req.body;
+  
+      if (!transcript || !Array.isArray(transcript)) {
+        return res.status(400).send("transcript is required and must be an array");
+      }
+  
+      // 1️⃣ Fetch therapists
+      const therapists = await findTherapist.findTherapists();
+  
+      // 2️⃣ Extract patient keywords
+      const keywordsData = await keywords.extractPatientKeywords(transcript);
+      const patientKeywords = keywordsData.keywords || [];
+  
+      // 3️⃣ Get recommendations + summary
+      const { recommendations, summary } = await recommendedTherapist.recommendTherapists(
+        therapists,
+        patientKeywords
+      );
+  
+      // 4️⃣ Convert summary string to speech (MP3 buffer)
+      const audioBuffer = await tts.synthesizeSpeech(summary);
+  
+      // 5️⃣ Return JSON + audio
+      res.json({
+        success: true,
+        recommendations, // JSON list for UI
+        summary,         // Text string
+        audio: audioBuffer.toString("base64") // Send MP3 as base64
+      });
+  
+    } catch (err) {
+      console.error("Error in full recommendation pipeline:", err);
+      res.status(500).send("Failed to generate recommendations");
+    }
+  });
+
 app.post("/api/stt", upload.single("audio"), async (req, res, next) => {
     try {
         if (!req.file) {
