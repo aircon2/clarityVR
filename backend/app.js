@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");               // (added) for ensuring tmp dir exists
+const fsp = require("fs/promises");      // (added) for writing raw bytes to .wav
 const stt = require("./services/stt");
 const chat = require("./services/chat");
 const context = require("./services/context");
@@ -13,13 +15,12 @@ const recommendedTherapist = require("./services/recommendedTherapist");
 const app = express();
 app.use(express.json());
 
-// Custom storage configuration for .wav files
+// --- existing multer config unchanged -------------------------------------
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, path.join(__dirname, "tmp"));
     },
     filename: function (req, file, cb) {
-        // Generate unique filename with .wav extension
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         cb(null, 'audio-' + uniqueSuffix + '.wav');
     }
@@ -29,7 +30,6 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: function (req, file, cb) {
-        // Optional: Only accept audio files
         if (file.mimetype.startsWith('audio/')) {
             cb(null, true);
         } else {
@@ -38,59 +38,81 @@ const upload = multer({
     }
 });
 
+// (added) ensure tmp directory exists once
+const TMP_DIR = path.join(__dirname, "tmp");
+if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
+
+// (added) helper to persist RAW byte array body to .wav the STT service expects
+async function saveRawBytesToWav(req) {
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        throw new Error("No raw audio bytes received. Send byte array with Content-Type: audio/wav or application/octet-stream");
+    }
+    const filename = `audio-${Date.now()}-${Math.round(Math.random() * 1e9)}.wav`;
+    const fullPath = path.join(TMP_DIR, filename);
+    await fsp.writeFile(fullPath, req.body);
+    return fullPath;
+}
+
 app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
 });
 
-app.post("/api/stt", upload.single("audio"), async (req, res, next) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: "No audio file uploaded" });
+// --- changed: accept RAW bytes only; write to .wav; feed to STT -------------
+app.post(
+    "/api/stt",
+    express.raw({ type: ["audio/wav", "audio/x-wav", "application/octet-stream"], limit: "10mb" }), // (added)
+    async (req, res, next) => {
+        try {
+            // (added) persist raw bytes to a local .wav file
+            const localWavPath = await saveRawBytesToWav(req);
+
+            // Transcribe step
+            const result = await stt.transcribe(localWavPath);
+
+            // Update Context
+            context.addMessage("PATIENT", result.text);
+
+            // get therapist stuff
+            const therapistResponse = await chat.chatGPT();
+
+            // Update Context
+            context.addMessage("THERAPIST", therapistResponse.content);
+
+            // Audio response step
+            const audio = await tts.synthesizeSpeech(therapistResponse.content);
+
+            res.set({
+                'Content-Type': 'audio/mpeg',
+                'Content-Length': audio.length
+            });
+            res.send(audio);
+
+        } catch (err) {
+            next(err);
         }
-
-        // Transcribe step
-        const result = await stt.transcribe(req.file.path);
-
-        // Update Context
-        context.addMessage("PATIENT", result.text);
-
-        // get therapist stuff
-        const therapistResponse = await chat.chatGPT();
-
-        // Update Context
-        context.addMessage("THERAPIST", therapistResponse.content);
-
-        // Audio response step
-        const audio = await tts.synthesizeSpeech(therapistResponse.content);
-
-        res.set({
-            'Content-Type': 'audio/mpeg',
-            'Content-Length': audio.length
-        });
-        res.send(audio);
-
-    } catch (err) {
-        next(err);
     }
-});
+);
 
-// TEST ENDPOINT: just transcription text
-app.post("/api/test-stt", upload.single("audio"), async (req, res, next) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: "No audio file uploaded" });
+// TEST ENDPOINT: just transcription text (RAW bytes only)
+app.post(
+    "/api/test-stt",
+    express.raw({ type: ["audio/wav", "audio/x-wav", "application/octet-stream"], limit: "10mb" }), // (added)
+    async (req, res, next) => {
+        try {
+            // (added) persist raw bytes to a local .wav file
+            const localWavPath = await saveRawBytesToWav(req);
+
+            // Call your ElevenLabs STT service
+            const result = await stt.transcribe(localWavPath);
+
+            // Return only the transcription text
+            res.json({ text: result.text });
+
+        } catch (err) {
+            next(err);
         }
-
-        // Call your ElevenLabs STT service
-        const result = await stt.transcribe(req.file.path);
-
-        // Return only the transcription text
-        res.json({ text: result.text });
-
-    } catch (err) {
-        next(err);
     }
-});
+);
 
 // GET context endpoint
 app.get("/api/get-context", (req, res) => {
@@ -118,43 +140,43 @@ app.get("/api/get-therapists", async (req, res) => {
 
 app.post("/api/extract-keywords", async (req, res) => {
     try {
-      const { transcript } = req.body;
-      if (!transcript || !Array.isArray(transcript)) {
-        return res.status(400).json({ error: "transcript is required and must be an array" });
-      }
-      const keywordsData = await keywords.extractPatientKeywords(transcript);
-      res.json({
-        success: true,
-        data: keywordsData
-      });
-    } catch (err) {
-      console.error("Error extracting patient keywords:", err);
-      res.status(500).json({ error: "Failed to extract keywords", message: err.message });
-    }
-  });
-
-  app.post("/api/recommend-therapists", async (req, res) => {
-    try {
-      const { therapistList, patientKeywords } = req.body;
-  
-      if (!therapistList || !patientKeywords) {
-        return res.status(400).json({
-          error: "therapistList and patientKeywords are required",
+        const { transcript } = req.body;
+        if (!transcript || !Array.isArray(transcript)) {
+            return res.status(400).json({ error: "transcript is required and must be an array" });
+        }
+        const keywordsData = await keywords.extractPatientKeywords(transcript);
+        res.json({
+            success: true,
+            data: keywordsData
         });
-      }
-  
-      // Call the service function
-      const recommendations = await recommendedTherapist.recommendTherapists(therapistList, patientKeywords);
-  
-      // Return the human-readable string
-      res.send(recommendations);
-  
     } catch (err) {
-      console.error("Error recommending therapists:", err);
-      res.status(500).json({ error: "Failed to recommend therapists", message: err.message });
+        console.error("Error extracting patient keywords:", err);
+        res.status(500).json({ error: "Failed to extract keywords", message: err.message });
     }
-  });
-  
+});
+
+app.post("/api/recommend-therapists", async (req, res) => {
+    try {
+        const { therapistList, patientKeywords } = req.body;
+
+        if (!therapistList || !patientKeywords) {
+            return res.status(400).json({
+                error: "therapistList and patientKeywords are required",
+            });
+        }
+
+        // Call the service function
+        const recommendations = await recommendedTherapist.recommendTherapists(therapistList, patientKeywords);
+
+        // Return the human-readable string
+        res.send(recommendations);
+
+    } catch (err) {
+        console.error("Error recommending therapists:", err);
+        res.status(500).json({ error: "Failed to recommend therapists", message: err.message });
+    }
+});
+
 
 // UPDATE context endpoint (add message)
 app.post("/api/post-context", (req, res) => {
