@@ -1,15 +1,280 @@
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import "dotenv/config";
-const elevenlabs = new ElevenLabsClient();
-const response = await fetch(
-    "https://storage.googleapis.com/eleven-public-cdn/audio/marketing/nicole.mp3"
-);
-const audioBlob = new Blob([await response.arrayBuffer()], { type: "audio/mp3" });
-const transcription = await elevenlabs.speechToText.convert({
-    file: audioBlob,
-    modelId: "scribe_v1", // Model to use, for now only "scribe_v1" is supported.
-    tagAudioEvents: true, // Tag audio events like laughter, applause, etc.
-    languageCode: "eng", // Language of the audio file. If set to null, the model will detect the language automatically.
-    diarize: true, // Whether to annotate who is speaking
+require("dotenv").config();
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");               // (added) for ensuring tmp dir exists
+const fsp = require("fs/promises");      // (added) for writing raw bytes to .wav
+const stt = require("./services/stt");
+const chat = require("./services/chat");
+const context = require("./services/context");
+const tts = require("./services/tts");
+const findTherapist = require("./services/findTherapist");
+const keywords = require("./services/keywords");
+const recommendedTherapist = require("./services/recommendedTherapist");
+
+const app = express();
+app.use(express.json());
+const cors = require("cors");
+app.use(cors({ origin: "*" }));
+
+// --- existing multer config unchanged -------------------------------------
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, path.join(__dirname, "tmp"));
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'audio-' + uniqueSuffix + '.wav');
+    }
 });
-console.log(transcription);
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 1000 * 1024 * 1024 },
+    fileFilter: function (req, file, cb) {
+        if (file.mimetype.startsWith('audio/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only audio files are allowed!'), false);
+        }
+    }
+});
+
+// (added) ensure tmp directory exists once
+const TMP_DIR = path.join(__dirname, "tmp");
+if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
+
+// (added) helper to persist RAW byte array body to .wav the STT service expects
+async function saveRawBytesToWav(req) {
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        throw new Error("No raw audio bytes received. Send byte array with Content-Type: audio/wav or application/octet-stream");
+    }
+    const filename = `audio-${Date.now()}-${Math.round(Math.random() * 1e9)}.wav`;
+    const fullPath = path.join(TMP_DIR, filename);
+    await fsp.writeFile(fullPath, req.body);
+    return fullPath;
+}
+
+app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok" });
+});
+
+// --- changed: accept RAW bytes only; write to .wav; feed to STT -------------
+app.post(
+    "/api/stt",
+    express.raw({ type: ["audio/wav", "audio/x-wav", "application/octet-stream"], limit: "1000mb" }),
+    async (req, res, next) => {
+        let localWavPath;
+        try {
+            console.log("Working");
+
+            // Persist raw bytes to WAV
+            localWavPath = await saveRawBytesToWav(req);
+
+            // STT
+            const sttResult = await stt.transcribe(localWavPath);
+            context.addMessage("PATIENT", sttResult.text);
+
+            // Therapist reply
+            const therapistResponse = await chat.chatGPT();
+            context.addMessage("THERAPIST", therapistResponse.content);
+
+            // TTS (returns Buffer or Uint8Array)
+            const audio = await tts.synthesizeSpeech(therapistResponse.content);
+
+            // Normalize to Uint8Array → plain number[] for JSON
+            const u8 =
+                audio instanceof Uint8Array
+                    ? audio
+                    : new Uint8Array(
+                        (audio.buffer ?? Buffer.from(audio).buffer),
+                        audio.byteOffset ?? 0,
+                        audio.length
+                    );
+
+            // Always return JSON with the byte array (no audio stream)
+            return res.json({
+                contentType: "audio/mpeg",
+                byteLength: u8.byteLength,
+                audioBytes: Array.from(u8),           // binary array
+                transcriptText: sttResult.text,       // what user said
+                therapistText: therapistResponse.content
+            });
+
+        } catch (err) {
+            next(err);
+        } finally {
+            if (localWavPath) {
+                fsp.unlink(localWavPath).catch(() => { });
+            }
+        }
+    }
+);
+
+
+// TEST ENDPOINT: just transcription text (RAW bytes only)
+app.post(
+    "/api/test-stt",
+    express.raw({ type: ["audio/wav", "audio/x-wav", "application/octet-stream"], limit: "10mb" }), // (added)
+    async (req, res, next) => {
+        try {
+            // (added) persist raw bytes to a local .wav file
+            const localWavPath = await saveRawBytesToWav(req);
+
+            // Call your ElevenLabs STT service
+            const result = await stt.transcribe(localWavPath);
+
+            // Return only the transcription text
+            res.json({ text: result.text });
+
+        } catch (err) {
+            next(err);
+        }
+    }
+);
+
+// GET context endpoint
+app.get("/api/get-context", (req, res) => {
+    try {
+        const transcript = context.getTranscript();
+        res.json({
+            transcript: transcript,
+            messageCount: transcript.length
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to get context", message: err.message });
+    }
+});
+
+app.get("/api/get-therapists", async (req, res) => {
+    try {
+        const therapists = await findTherapist.findTherapists();
+        res.json({ therapists });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to fetch therapists" });
+    }
+});
+
+
+app.post("/api/extract-keywords", async (req, res) => {
+    try {
+        const { transcript } = req.body;
+        if (!transcript || !Array.isArray(transcript)) {
+            return res.status(400).json({ error: "transcript is required and must be an array" });
+        }
+        const keywordsData = await keywords.extractPatientKeywords(transcript);
+        res.json({
+            success: true,
+            data: keywordsData
+        });
+    } catch (err) {
+        console.error("Error extracting patient keywords:", err);
+        res.status(500).json({ error: "Failed to extract keywords", message: err.message });
+    }
+});
+
+app.post("/api/recommend-therapists", async (req, res) => {
+    try {
+        const { therapistList, patientKeywords } = req.body;
+
+        if (!therapistList || !patientKeywords) {
+            return res.status(400).json({
+                error: "therapistList and patientKeywords are required",
+            });
+        }
+
+        // Call the service function
+        const recommendations = await recommendedTherapist.recommendTherapists(therapistList, patientKeywords);
+
+        // Return the human-readable string
+        res.send(recommendations);
+
+    } catch (err) {
+        console.error("Error recommending therapists:", err);
+        res.status(500).json({ error: "Failed to recommend therapists", message: err.message });
+    }
+});
+
+
+// UPDATE context endpoint (add message)
+app.post("/api/post-context", (req, res) => {
+    try {
+        const { role, content } = req.body;
+
+        context.addMessage(role, content);
+
+        res.json({
+            success: true,
+            message: "Message added to context",
+            transcript: context.getTranscript()
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to update context", message: err.message });
+    }
+});
+
+// CLEAR context endpoint
+app.delete("/api/clear-context", (req, res) => {
+    try {
+        context.clearTranscript();
+
+        res.json({
+            success: true,
+            message: "Context cleared successfully",
+            transcript: context.getTranscript() // Should return empty array
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to clear context", message: err.message });
+    }
+});
+
+// TEST ENDPOINT: Chat service
+app.get("/api/test-chat", async (req, res, next) => {
+    try {
+
+        const therapistResponse = await chat.chatGPT();
+
+        res.json({
+            success: true,
+            contextLength: context.getTranscript().length,
+            currentContext: context.getTranscript(),
+            content: therapistResponse
+        });
+
+    } catch (err) {
+        next(err);
+    }
+});
+
+// TEST ENDPOINT: TTS service
+app.post("/api/test-tts", async (req, res, next) => {
+    try {
+        const { text } = req.body;
+
+        if (!text) {
+            return res.status(400).json({ error: "Text is required" });
+        }
+
+        const audioBuffer = await tts.synthesizeSpeech(text);
+
+        res.set({
+            'Content-Type': 'audio/mpeg',
+            'Content-Length': audioBuffer.length
+        });
+        res.send(audioBuffer);
+
+    } catch (err) {
+        next(err);
+    }
+});
+
+app.use((err, _req, res, _next) => {
+    console.error(err);
+    res.status(500).json({ error: "internal_error", message: err.message });
+});
+
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => {
+    console.log(`Backend listening on port ${PORT}`);
+});

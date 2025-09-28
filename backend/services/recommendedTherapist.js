@@ -5,42 +5,52 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function recommendTherapists(therapistList) {
+export async function recommendTherapists(therapistList, patientKeywords) {
   try {
-    
-
-
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that outputs valid JSON only. Do not include any text outside JSON."
+          content: `You are a helpful assistant.
+          Return recommendations **only** as a JSON array of top 5 therapist objects.
+          Each object should have these fields: name, clinicName, rating, address, matchedWords.
+          **Do not include any summary or extra text.**
+          **Important:** if the therapist name and clinic name are the same, disregard the clinicName entirely (leave it empty "").`
         },
         {
           role: "user",
-          content: `Here is a list of therapists:\n${JSON.stringify(therapistList, null, 2)}
-Pick the best 5 based on rating and location. Return them as a JSON array with keys: name, rating, address only. like this: [{
-    "name": "Therapist Name",
-    "rating": 4.9,
-    "address": "123 Main St"
-  },
-  ...]`
+          content: `
+            Patient keywords/needs: ${JSON.stringify(patientKeywords)}
+            Therapists data: ${JSON.stringify(therapistList)}
+
+            Output format (important!):
+
+            {
+              "recommendations": [
+                {
+                  "name": "string",
+                  "clinicName": "string",
+                  "rating": number,
+                  "address": "string",
+                  "matchedWords": "string"
+                }
+              ]
+            }
+          `
         }
       ],
-       
       temperature: 0.3,
+      response_format: { type: "json_object" },
     });
 
-    console.log("📝 Raw OpenAI response:", completion.choices[0].message.content);
+    const raw = completion.choices[0].message.content;
+    const parsed = JSON.parse(raw);
 
-    const result = JSON.parse(completion.choices[0].message.content);
+    return parsed; // { recommendations: [...] }
 
-    console.log("✅ Parsed OpenAI recommendations:", result);
-
-    return result.recommendations;
   } catch (err) {
-    console.error(err);
-    return null;
+    console.error("Error generating therapist recommendations:", err);
+    throw err;
   }
 }
