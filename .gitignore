@@ -16,6 +16,10 @@ unity-client/ClarityVR/Library/
 unity-client/ClarityVR/Temp
 unity-client/ClarityVR/UserSettings
 
+unity-client/test_hackGT12/Library/
+unity-client/test_hackGT12/Temp 
+unity-client/test_hackGT12/UserSettings
+
 unity-client/Room/Library/
 unity-client/Room/Temp
 unity-client/Room/UserSettings
@@ -121,3 +125,6 @@ DS_Store
 //Large files to ignore
 unity-client/ClarityVR/Assets/Proxy Games/Stylized Nature Kit Lite/Misc/HDRI.hdr
 unity-client/ClarityVR/Assets/Proxy Games/Stylized Nature Kit Lite/Misc/HDRI.hdr.meta
+
+unity-client/test_hackGT12/Assets/Proxy Games/Stylized Nature Kit Lite/Misc/HDRI.hdr
+unity-client/test_hackGT12/Assets/Proxy Games/Stylized Nature Kit Lite/Misc/HDRI.hdr.meta
