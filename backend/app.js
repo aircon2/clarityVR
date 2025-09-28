@@ -14,6 +14,8 @@ const recommendedTherapist = require("./services/recommendedTherapist");
 
 const app = express();
 app.use(express.json());
+const cors = require("cors");
+app.use(cors({ origin: "*" }));
 
 // --- existing multer config unchanged -------------------------------------
 const storage = multer.diskStorage({
@@ -28,7 +30,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 },
+    limits: { fileSize: 1000 * 1024 * 1024 },
     fileFilter: function (req, file, cb) {
         if (file.mimetype.startsWith('audio/')) {
             cb(null, true);
@@ -60,7 +62,7 @@ app.get("/api/health", (_req, res) => {
 // --- changed: accept RAW bytes only; write to .wav; feed to STT -------------
 app.post(
     "/api/stt",
-    express.raw({ type: ["audio/wav", "audio/x-wav", "application/octet-stream"], limit: "10mb" }),
+    express.raw({ type: ["audio/wav", "audio/x-wav", "application/octet-stream"], limit: "1000mb" }),
     async (req, res, next) => {
         let localWavPath;
         try {

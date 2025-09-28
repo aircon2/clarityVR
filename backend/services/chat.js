@@ -26,8 +26,9 @@ async function chatGPT() {
         ${JSON.stringify(messages)}
         
         IMPORTANT: Return JSON only.
+        IMPORTANT: set response to be exactly speech time 10 seconds long.
         IMPORTANT: Let text responses be concise.
-        IMPORTANT: Responses should offer care and emotional validation, additionally you can provide ways to help. 
+        IMPORTANT: Responses should offer care and emotional validation, additionally you can provide ways to help and take shorter than 10 seconds to talk. 
         
         Extract text from transcript to read the history and return the response as a JSON array with this exact structure:
         [
