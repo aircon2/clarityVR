@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.daksh.nature">
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/app_icon"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="true">
+
+        <activity android:name="com.unity3d.player.UnityPlayerActivity"
+                  android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+                  android:configChanges="locale|fontScale|keyboard|keyboardHidden|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
+                  android:launchMode="singleTask"
+                  android:excludeFromRecents="true"
+                  android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="com.oculus.intent.category.VR" />
+            </intent-filter>
+
+            <meta-data android:name="com.oculus.vr.focusaware" android:value="true" />
+        </activity>
+
+        <meta-data android:name="unityplayer.SkipPermissionsDialog" android:value="false" />
+        <meta-data android:name="com.oculus.ossplash.background" android:value="black" />
+        <meta-data android:name="com.oculus.telemetry.project_guid" android:value="9a51db2f-28cd-4d41-87e1-ae3382e5ea9e" />
+        <meta-data android:name="com.oculus.supportedDevices" android:value="quest|quest2|questpro|quest3|quest3s" />
+
+    </application>
+
+    <uses-feature android:name="android.hardware.vr.headtracking" android:version="1" android:required="true" />
+</manifest>
